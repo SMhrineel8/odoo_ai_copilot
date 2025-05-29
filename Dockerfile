@@ -1,26 +1,19 @@
-# 1. Base image
+# 1. Use Python slim image
 FROM python:3.11-slim
 
-# 2. Set workdir
-WORKDIR /app/backend
+# 2. Set working directory
+WORKDIR /app
 
-# 3. Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# 4. Copy only the requirements first (cache layer)
+# 3. Copy and install dependencies
 COPY apps/backend/requirements.txt ./requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# 5. Install Python dependencies
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
-
-# 6. Copy backend source code
+# 4. Copy app code
 COPY apps/backend/ .
 
-# 7. Expose the port the app runs on
+# 5. Expose port
 EXPOSE 8000
 
-# 8. Run the application
+# 6. Start FastAPI server
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
