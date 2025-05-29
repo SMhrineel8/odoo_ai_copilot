@@ -1,52 +1,33 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 import os
-import openai
-from odoo_connector import OdooConnector
+from ai.chat_engine import chat_to_erp
+from odoo_connector import fetch_invoices, fetch_inventory
 
-app = FastAPI(title="Odoo AI Copilot Backend")
+app = FastAPI(title="Odoo AI Copilot")
 
-# Load OpenAI key
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY not set")
-openai.api_key = OPENAI_API_KEY
-
-# Load Odoo credentials
-ODOO_URL = os.getenv("ODOO_URL")
-ODOO_DB = os.getenv("ODOO_DB")
-ODOO_USER = os.getenv("ODOO_USER")
-ODOO_PASS = os.getenv("ODOO_PASS")
-if not all([ODOO_URL, ODOO_DB, ODOO_USER, ODOO_PASS]):
-    raise RuntimeError("Odoo connection vars missing")
-
-# Dependency: one connector per request
-def get_odoo():
-    return OdooConnector(ODOO_URL, ODOO_DB, ODOO_USER, ODOO_PASS)
-
-class PromptRequest(BaseModel):
-    prompt: str
-    max_tokens: int = 150
-
-@app.get("/")
+# Health check
+@app.get("/health")
 async def health():
     return {"status": "ok"}
 
+# ---- Chat Interface ----
+class ChatRequest(BaseModel):
+    question: str
+
 @app.post("/api/v1/chat")
-async def chat(request: PromptRequest):
+async def api_chat(req: ChatRequest):
     try:
-        resp = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": request.prompt}],
-            max_tokens=request.max_tokens,
-            temperature=0.2,
-        )
-        return {"response": resp.choices[0].message.content.strip()}
+        answer = chat_to_erp(req.question)
+        return {"answer": answer}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/v1/odoo/sales")
-async def monthly_sales(odoo: OdooConnector = Depends(get_odoo)):
-    """Fetch total sales for current month from Odoo"""
-    total, records = odoo.fetch_monthly_sales()
-    return {"total_sales": total, "records": records}
+# ---- Data Endpoints ----
+@app.get("/api/v1/invoices")
+async def api_invoices():
+    return {"invoices": fetch_invoices(limit=10)}
+
+@app.get("/api/v1/inventory")
+async def api_inventory():
+    return {"inventory": fetch_inventory(limit=10)}
