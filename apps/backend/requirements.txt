@@ -1,4 +1,8 @@
-fastapi==0.95.1
-uvicorn==0.22.0
-openai==0.27.8
-pydantic==1.10.7
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+openai
+xmlrpc
+requests
+langchain
