@@ -4,18 +4,23 @@ FROM python:3.11-slim
 # 2. Set workdir
 WORKDIR /app/backend
 
-# 3. Copy only the requirements first (cache layer)
+# 3. Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# 4. Copy only the requirements first (cache layer)
 COPY apps/backend/requirements.txt ./requirements.txt
 
-# 4. Install Python dependencies
+# 5. Install Python dependencies
 RUN pip install --upgrade pip \
- && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir -r requirements.txt
 
-# 5. Copy backend source code
+# 6. Copy backend source code
 COPY apps/backend/ .
 
-# 6. Expose the port the app runs on
+# 7. Expose the port the app runs on
 EXPOSE 8000
 
-# 7. Run the application
+# 8. Run the application
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
